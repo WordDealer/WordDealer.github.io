@@ -101,11 +101,12 @@
 
         if (e.y > canvas.height) enemies.splice(i, 1);
 
+        // 玩家 vs 敌机 （圆形碰撞）
         if (
-          e.x < player.x + player.width &&
-          e.x + e.width > player.x &&
-          e.y < player.y + player.height &&
-          e.y + e.height > player.y
+          isCircleColliding(
+            e.x + e.width / 2, e.y + e.height / 2, e.width * 0.3, // 敌机半径
+            player.x + player.width / 2, player.y + player.height / 2, player.width * 0.3 // 玩家半径
+          )
         ) {
           gameOver = true;
         }
@@ -115,11 +116,12 @@
     function checkCollisions() {
       bullets.forEach((b, bi) => {
         enemies.forEach((e, ei) => {
+          // 子弹 vs 敌机 （圆形碰撞）
           if (
-            b.x < e.x + e.width &&
-            b.x + b.width > e.x &&
-            b.y < e.y + e.height &&
-            b.y + b.height > e.y
+            isCircleColliding(
+              b.x + b.width / 2, b.y + b.height / 2, b.width * 0.3, // 子弹半径
+              e.x + e.width / 2, e.y + e.height / 2, e.width * 0.3  // 敌机半径
+            )
           ) {
             bullets.splice(bi, 1);
             enemies.splice(ei, 1);
@@ -128,6 +130,14 @@
           }
         });
       });
+    }
+
+    // 圆形碰撞检测函数
+    function isCircleColliding(x1, y1, r1, x2, y2, r2) {
+      const dx = x1 - x2;
+      const dy = y1 - y2;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance < r1 + r2;
     }
 
     function gameLoop() {
