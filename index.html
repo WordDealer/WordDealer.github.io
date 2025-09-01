@@ -7,11 +7,10 @@
     body {
       margin: 0;
       overflow: hidden;
-      background: white url("bg1.png") center/cover no-repeat; /* 默认背景 */
+      background: white url("bg1.png") center/cover no-repeat;
       text-align: center;
       color: white;
       font-family: Arial, sans-serif;
-      transition: background 0.5s ease; /* 切换时平滑过渡 */
     }
     /* 全屏粉色半透明背景 */
     #overlay {
@@ -20,8 +19,8 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(255, 105, 180, 0.2); /* 粉色半透明 */
-      z-index: -1; /* 放在最底层 */
+      background: rgba(255, 105, 180, 0.2);
+      z-index: -1;
     }
     canvas {
       display: block;
@@ -64,7 +63,7 @@
       top: 80px;
       left: 20px;
       width: 200px;
-      background: rgba(255, 192, 203, 0.7); /* 浅粉色半透明 */
+      background: rgba(255, 192, 203, 0.7);
       color: black;
       padding: 15px;
       border-radius: 10px;
@@ -73,25 +72,23 @@
       line-height: 1.5em;
       z-index: 2;
     }
-    /* 切换背景按钮 */
-    #changeBgBtn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 8px 15px;
-      font-size: 16px;
-      background: rgba(255,192,203,0.8);
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      z-index: 3;
-    }
-    #changeBgBtn:hover {
-      background: rgba(255,105,180,0.9);
+    /* 背景切换层 */
+    #bgLayer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      opacity: 1;
+      transition: opacity 2s ease; /* 渐变时间 */
+      z-index: -2;
     }
   </style>
 </head>
 <body>
+  <div id="bgLayer"></div> <!-- 背景层 -->
   <div id="overlay"></div> <!-- 粉色半透明背景 -->
 
   <div id="score">捉弄次数: 0</div>
@@ -112,12 +109,8 @@
     </ul>
   </div>
 
-  <!-- 切换背景按钮 -->
-  <button id="changeBgBtn">切换背景</button>
-
   <!-- 背景音乐 -->
   <audio id="bgm" src="bgm.mp3" loop></audio>
-  <!-- 子弹音效 -->
   <audio id="shootSound" src="shoot.mp3"></audio>
 
   <script>
@@ -125,7 +118,6 @@
     const ctx = canvas.getContext("2d");
     const scoreEl = document.getElementById("score");
     const startBtn = document.getElementById("startBtn");
-    const mobileMsg = document.getElementById("mobileMsg");
 
     const bgm = document.getElementById("bgm");
     const shootSound = document.getElementById("shootSound");
@@ -144,13 +136,10 @@
     document.addEventListener("keydown", e => keys[e.code] = true);
     document.addEventListener("keyup", e => keys[e.code] = false);
 
-    function drawPlayer() {
-      if (playerImg.complete) ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
-    }
+    function drawPlayer() { if (playerImg.complete) ctx.drawImage(playerImg, player.x, player.y, player.width, player.height); }
     function shoot() {
       bullets.push({ x: player.x+player.width/2-5, y: player.y, width:10, height:20, speed:7 });
-      shootSound.currentTime = 0;
-      shootSound.play();
+      shootSound.currentTime = 0; shootSound.play();
     }
     function drawBullets() {
       bullets.forEach((b,i)=>{ 
@@ -178,7 +167,6 @@
     function isCircleColliding(x1,y1,r1,x2,y2,r2){ const dx=x1-x2,dy=y1-y2; return Math.sqrt(dx*dx+dy*dy)<r1+r2; }
 
     let enemyInterval;
-
     function gameLoop(){
       if(gameOver){
         ctx.fillStyle="white";
@@ -186,7 +174,6 @@
         ctx.fillText("捉弄失败",canvas.width/2-100,canvas.height/2);
         return;
       }
-
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
       if(keys["ArrowLeft"] && player.x>0) player.x-=player.speed;
@@ -205,27 +192,27 @@
 
     startBtn.addEventListener("click", () => {
       startBtn.style.display="none";
-      bgm.volume=0.5;
-      bgm.play();
+      bgm.volume=0.5; bgm.play();
 
       playerImg.onload = () => { enemyInterval = setInterval(spawnEnemy,1000); gameLoop(); };
       if(playerImg.complete){ enemyInterval = setInterval(spawnEnemy,1000); gameLoop(); }
     });
 
-
-
-    // 背景切换功能
-    const bgList = [
-      "bg1.png", // 可爱猫猫
-      "bg2.png", // 小星星
-      "bg3.png", // 爱心风格
-      "bg4.png"  // 其他图
-    ];
+    // === 自动背景切换 ===
+    const bgList = ["bg1.jpg","bg2.jpg","bg3.jpg","bg4.jpg","bg5.jpg","bg6.jpg"];
     let bgIndex = 0;
-    document.getElementById("changeBgBtn").addEventListener("click", () => {
-      bgIndex = (bgIndex + 1) % bgList.length;
-      document.body.style.background = `white url("${bgList[bgIndex]}") center/cover no-repeat`;
-    });
+    const bgLayer = document.getElementById("bgLayer");
+
+    function changeBackground(){
+      bgLayer.style.opacity = 0; // 先淡出
+      setTimeout(()=>{
+        bgIndex = (bgIndex+1)%bgList.length;
+        bgLayer.style.backgroundImage = `url(${bgList[bgIndex]})`;
+        bgLayer.style.opacity = 1; // 再淡入
+      },2000); // 等淡出结束
+    }
+    bgLayer.style.backgroundImage = `url(${bgList[bgIndex]})`;
+    setInterval(changeBackground, 8000); // 每 8 秒换一次背景
   </script>
 </body>
 </html>
