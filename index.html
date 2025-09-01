@@ -33,6 +33,33 @@
       font-size: 24px;
       cursor: pointer;
     }
+    /* 遥感样式 */
+    #joystickContainer {
+      position: absolute;
+      bottom: 80px;
+      left: 80px;
+      width: 120px;
+      height: 120px;
+      display: none;
+      touch-action: none;
+    }
+    #joystickBase {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+    }
+    #joystickThumb {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      left: 30px;
+      top: 30px;
+      touch-action: none;
+    }
   </style>
 </head>
 <body>
@@ -40,6 +67,12 @@
   <canvas id="gameCanvas" width="480" height="640"></canvas>
 
   <button id="startBtn">开始游戏</button>
+
+  <!-- 虚拟遥感 -->
+  <div id="joystickContainer">
+    <div id="joystickBase"></div>
+    <div id="joystickThumb"></div>
+  </div>
 
   <!-- 背景音乐 -->
   <audio id="bgm" src="bgm.mp3" loop></audio>
@@ -96,23 +129,81 @@
     function isCircleColliding(x1,y1,r1,x2,y2,r2){ const dx=x1-x2,dy=y1-y2; return Math.sqrt(dx*dx+dy*dy)<r1+r2; }
 
     let enemyInterval;
-    function gameLoop() {
-      if(gameOver){ ctx.fillStyle="white"; ctx.font="40px Arial"; ctx.fillText("捉弄失败",canvas.width/2-100,canvas.height/2); return; }
+    let isMobile = 'ontouchstart' in window || navigator.maxTouchPoints>0;
+
+    // 摇杆变量
+    let joystickX=0, joystickY=0;
+
+    if(isMobile){
+      const joystickContainer = document.getElementById("joystickContainer");
+      joystickContainer.style.display="block";
+      const joystickBase = document.getElementById("joystickBase");
+      const joystickThumb = document.getElementById("joystickThumb");
+      let moving=false;
+
+      joystickThumb.addEventListener("touchstart", e=>{ e.preventDefault(); moving=true; });
+      joystickThumb.addEventListener("touchend", e=>{ e.preventDefault(); moving=false; joystickX=0; joystickY=0; joystickThumb.style.transform="translate(0px,0px)"; });
+      joystickThumb.addEventListener("touchmove", e=>{
+        e.preventDefault();
+        if(!moving) return;
+        const touch = e.touches[0];
+        const rect = joystickBase.getBoundingClientRect();
+        let dx = touch.clientX-(rect.left+rect.width/2);
+        let dy = touch.clientY-(rect.top+rect.height/2);
+        const distance = Math.sqrt(dx*dx+dy*dy);
+        const maxDistance = rect.width/2;
+        if(distance>maxDistance){ dx=dx*maxDistance/distance; dy=dy*maxDistance/distance; }
+        joystickX = dx/maxDistance;
+        joystickY = dy/maxDistance;
+        joystickThumb.style.transform=`translate(${dx}px,${dy}px)`;
+      });
+
+      // 自动射击
+      setInterval(()=>{ if(!gameOver) shoot(); }, 300);
+    }
+
+    function updatePlayerMobile(){
+      const speed = player.speed;
+      player.x += joystickX*speed;
+      player.y += joystickY*speed;
+      if(player.x<0) player.x=0;
+      if(player.x>canvas.width-player.width) player.x=canvas.width-player.width;
+      if(player.y<0) player.y=0;
+      if(player.y>canvas.height-player.height) player.y=canvas.height-player.height;
+    }
+
+    function gameLoop(){
+      if(gameOver){
+        ctx.fillStyle="white";
+        ctx.font="40px Arial";
+        ctx.fillText("捉弄失败",canvas.width/2-100,canvas.height/2);
+        return;
+      }
+
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      if(keys["ArrowLeft"] && player.x>0) player.x-=player.speed;
-      if(keys["ArrowRight"] && player.x<canvas.width-player.width) player.x+=player.speed;
-      if(keys["ArrowUp"] && player.y>0) player.y-=player.speed;
-      if(keys["ArrowDown"] && player.y<canvas.height-player.height) player.y+=player.speed;
-      if(keys["Space"]){ if(!keys.shooting){ shoot(); keys.shooting=true; } } else { keys.shooting=false; }
-      drawPlayer(); drawBullets(); drawEnemies(); checkCollisions();
+
+      if(isMobile) updatePlayerMobile();
+      else {
+        if(keys["ArrowLeft"] && player.x>0) player.x-=player.speed;
+        if(keys["ArrowRight"] && player.x<canvas.width-player.width) player.x+=player.speed;
+        if(keys["ArrowUp"] && player.y>0) player.y-=player.speed;
+        if(keys["ArrowDown"] && player.y<canvas.height-player.height) player.y+=player.speed;
+        if(keys["Space"]){ if(!keys.shooting){ shoot(); keys.shooting=true; } } else { keys.shooting=false; }
+      }
+
+      drawPlayer();
+      drawBullets();
+      drawEnemies();
+      checkCollisions();
+
       requestAnimationFrame(gameLoop);
     }
 
     startBtn.addEventListener("click", () => {
-      startBtn.style.display = "none"; // 隐藏按钮
-      bgm.volume = 0.5;
+      startBtn.style.display="none";
+      bgm.volume=0.5;
       bgm.play();
-      enemyInterval = setInterval(spawnEnemy, 1000);
+      enemyInterval = setInterval(spawnEnemy,1000);
       gameLoop();
     });
   </script>
