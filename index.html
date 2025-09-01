@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <title>雷霆战机 - HTML5 版</title>
+  <title>雷霆战机(高木版) - HTML5 版</title>
   <style>
     body {
       margin: 0;
@@ -26,7 +26,7 @@
   </style>
 </head>
 <body>
-  <div id="score">分数: 0</div>
+  <div id="score">捉弄次数: 0</div>
   <canvas id="gameCanvas" width="480" height="640"></canvas>
 
   <script>
@@ -125,8 +125,8 @@
           ) {
             bullets.splice(bi, 1);
             enemies.splice(ei, 1);
-            score += 10;
-            scoreEl.textContent = "分数: " + score;
+            score += 1;
+            scoreEl.textContent = "捉弄次数: " + score;
           }
         });
       });
@@ -144,7 +144,7 @@
       if (gameOver) {
         ctx.fillStyle = "white";
         ctx.font = "40px Arial";
-        ctx.fillText("游戏结束", canvas.width / 2 - 100, canvas.height / 2);
+        ctx.fillText("捉弄失败", canvas.width / 2 - 100, canvas.height / 2);
         return;
       }
 
