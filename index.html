@@ -2,12 +2,13 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <title>雷霆战机 - PC+手机适配版</title>
+  <title>雷霆战机(高木版) - HTML5 版</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
       background: black;
+      text-align: center;
     }
     canvas {
       display: block;
@@ -15,149 +16,205 @@
       background: url("background.png") repeat-y;
       background-size: cover;
     }
-    /* 摇杆样式 */
-    #joystick {
-      position: fixed;
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 20px;
+      font-family: Arial, sans-serif;
+    }
+    #startBtn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 15px 30px;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    /* 遥感样式 */
+    #joystickContainer {
+      position: absolute;
       bottom: 80px;
       left: 80px;
       width: 120px;
       height: 120px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.3);
-      display: none; /* 默认隐藏，只在手机显示 */
+      display: none;
       touch-action: none;
     }
-    #stick {
+    #joystickBase {
       position: absolute;
-      left: 50%;
-      top: 50%;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+    }
+    #joystickThumb {
+      position: absolute;
       width: 60px;
       height: 60px;
-      margin-left: -30px;
-      margin-top: -30px;
-      background: rgba(255,255,255,0.5);
+      background: rgba(255, 255, 255, 0.5);
       border-radius: 50%;
+      left: 30px;
+      top: 30px;
       touch-action: none;
     }
   </style>
 </head>
 <body>
+  <div id="score">捉弄次数: 0</div>
   <canvas id="gameCanvas" width="480" height="640"></canvas>
-  <div id="joystick"><div id="stick"></div></div>
+
+  <button id="startBtn">开始游戏</button>
+
+  <!-- 虚拟遥感 -->
+  <div id="joystickContainer">
+    <div id="joystickBase"></div>
+    <div id="joystickThumb"></div>
+  </div>
+
+  <!-- 背景音乐 -->
+  <audio id="bgm" src="bgm.mp3" loop></audio>
+  <!-- 子弹音效 -->
+  <audio id="shootSound" src="shoot.mp3"></audio>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const startBtn = document.getElementById("startBtn");
 
-    // 玩家飞机
-    const player = {
-      x: canvas.width / 2 - 20,
-      y: canvas.height - 80,
-      width: 40,
-      height: 40,
-      speed: 5
-    };
+    const bgm = document.getElementById("bgm");
+    const shootSound = document.getElementById("shootSound");
 
-    // 子弹与敌机
-    const bullets = [];
-    const enemies = [];
+    const playerImg = new Image();
+    playerImg.src = "player.png";
+    const enemyImg = new Image();
+    enemyImg.src = "enemy.png";
+    const bulletImg = new Image();
+    bulletImg.src = "bullet.png";
 
-    // 控制状态
-    let keys = {};
-    let isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+    const player = { x: canvas.width/2-20, y: canvas.height-80, width: 40, height: 40, speed: 5 };
+    let bullets = [], enemies = [], score = 0, gameOver = false;
+    const keys = {};
 
-    // 摇杆
-    const joystick = document.getElementById("joystick");
-    const stick = document.getElementById("stick");
-    let joyActive = false, joyX = 0, joyY = 0;
+    document.addEventListener("keydown", e => keys[e.code] = true);
+    document.addEventListener("keyup", e => keys[e.code] = false);
 
-    if (isMobile) {
-      joystick.style.display = "block"; // 显示摇杆
-      setInterval(() => { bullets.push({x: player.x + player.width/2 - 2, y: player.y, width:4, height:10, speed:7}); }, 300); // 自动射击
+    function drawPlayer() {
+      if (playerImg.complete) ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+    }
+    function shoot() {
+      bullets.push({ x: player.x+player.width/2-5, y: player.y, width:10, height:20, speed:7 });
+      shootSound.currentTime = 0;
+      shootSound.play();
+    }
+    function drawBullets() {
+      bullets.forEach((b,i)=>{ 
+        b.y-=b.speed; 
+        if(bulletImg.complete) ctx.drawImage(bulletImg,b.x,b.y,b.width,b.height); 
+        if(b.y<0) bullets.splice(i,1); 
+      });
+    }
+    function spawnEnemy() { enemies.push({ x: Math.random()*(canvas.width-40), y:-40, width:40, height:40, speed:2+Math.random()*2 }); }
+    function drawEnemies() {
+      enemies.forEach((e,i)=>{
+        e.y+=e.speed; 
+        if(enemyImg.complete) ctx.drawImage(enemyImg,e.x,e.y,e.width,e.height);
+        if(e.y>canvas.height) enemies.splice(i,1);
+        if(isCircleColliding(e.x+e.width/2,e.y+e.height/2,e.width*0.3,player.x+player.width/2,player.y+player.height/2,player.width*0.3)) gameOver=true;
+      });
+    }
+    function checkCollisions() {
+      bullets.forEach((b,bi)=>{ enemies.forEach((e,ei)=>{ 
+        if(isCircleColliding(b.x+b.width/2,b.y+b.height/2,b.width*0.3,e.x+e.width/2,e.y+e.height/2,e.width*0.3)){
+          bullets.splice(bi,1); enemies.splice(ei,1); score+=1; scoreEl.textContent="捉弄次数: "+score;
+        }
+      });});
+    }
+    function isCircleColliding(x1,y1,r1,x2,y2,r2){ const dx=x1-x2,dy=y1-y2; return Math.sqrt(dx*dx+dy*dy)<r1+r2; }
+
+    let enemyInterval;
+    let isMobile = 'ontouchstart' in window || navigator.maxTouchPoints>0;
+
+    // 摇杆变量
+    let joystickX=0, joystickY=0;
+
+    if(isMobile){
+      const joystickContainer = document.getElementById("joystickContainer");
+      joystickContainer.style.display="block";
+      const joystickBase = document.getElementById("joystickBase");
+      const joystickThumb = document.getElementById("joystickThumb");
+      let moving=false;
+
+      joystickThumb.addEventListener("touchstart", e=>{ e.preventDefault(); moving=true; });
+      joystickThumb.addEventListener("touchend", e=>{ e.preventDefault(); moving=false; joystickX=0; joystickY=0; joystickThumb.style.transform="translate(0px,0px)"; });
+      joystickThumb.addEventListener("touchmove", e=>{
+        e.preventDefault();
+        if(!moving) return;
+        const touch = e.touches[0];
+        const rect = joystickBase.getBoundingClientRect();
+        let dx = touch.clientX-(rect.left+rect.width/2);
+        let dy = touch.clientY-(rect.top+rect.height/2);
+        const distance = Math.sqrt(dx*dx+dy*dy);
+        const maxDistance = rect.width/2;
+        if(distance>maxDistance){ dx=dx*maxDistance/distance; dy=dy*maxDistance/distance; }
+        joystickX = dx/maxDistance;
+        joystickY = dy/maxDistance;
+        joystickThumb.style.transform=`translate(${dx}px,${dy}px)`;
+      });
+
+      // 自动射击
+      setInterval(()=>{ if(!gameOver) shoot(); }, 300);
     }
 
-    // 键盘事件 (PC)
-    window.addEventListener("keydown", e => { keys[e.key] = true; });
-    window.addEventListener("keyup", e => { keys[e.key] = false; });
-
-    // 摇杆事件 (手机)
-    stick.addEventListener("touchstart", e => { joyActive = true; e.preventDefault(); });
-    stick.addEventListener("touchend", e => { joyActive = false; joyX = joyY = 0; stick.style.left="50%"; stick.style.top="50%"; });
-    stick.addEventListener("touchmove", e => {
-      e.preventDefault();
-      const rect = joystick.getBoundingClientRect();
-      const touch = e.touches[0];
-      const dx = touch.clientX - (rect.left + rect.width/2);
-      const dy = touch.clientY - (rect.top + rect.height/2);
-      const dist = Math.min(Math.sqrt(dx*dx+dy*dy), rect.width/2 - 30);
-      const angle = Math.atan2(dy, dx);
-      joyX = Math.cos(angle) * (dist/(rect.width/2));
-      joyY = Math.sin(angle) * (dist/(rect.width/2));
-      stick.style.left = 50 + joyX*50 + "%";
-      stick.style.top = 50 + joyY*50 + "%";
-    });
-
-    // 生成敌机
-    function spawnEnemy() {
-      enemies.push({x: Math.random() * (canvas.width-40), y: -40, width:40, height:40, speed:2});
-    }
-    setInterval(spawnEnemy, 1000);
-
-    // 绘制矩形
-    function drawRect(obj, color) {
-      ctx.fillStyle = color;
-      ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+    function updatePlayerMobile(){
+      const speed = player.speed;
+      player.x += joystickX*speed;
+      player.y += joystickY*speed;
+      if(player.x<0) player.x=0;
+      if(player.x>canvas.width-player.width) player.x=canvas.width-player.width;
+      if(player.y<0) player.y=0;
+      if(player.y>canvas.height-player.height) player.y=canvas.height-player.height;
     }
 
-    // 更新
-    function update() {
-      if (!isMobile) {
-        if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
-        if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
-        if (keys["ArrowUp"] && player.y > 0) player.y -= player.speed;
-        if (keys["ArrowDown"] && player.y < canvas.height - player.height) player.y += player.speed;
-        if (keys[" "] ) bullets.push({x: player.x+player.width/2-2,y:player.y,width:4,height:10,speed:7});
-      } else {
-        player.x += joyX * player.speed * 2;
-        player.y += joyY * player.speed * 2;
-        player.x = Math.max(0, Math.min(canvas.width-player.width, player.x));
-        player.y = Math.max(0, Math.min(canvas.height-player.height, player.y));
+    function gameLoop(){
+      if(gameOver){
+        ctx.fillStyle="white";
+        ctx.font="40px Arial";
+        ctx.fillText("捉弄失败",canvas.width/2-100,canvas.height/2);
+        return;
       }
 
-      // 更新子弹
-      for (let i=bullets.length-1;i>=0;i--){
-        bullets[i].y -= bullets[i].speed;
-        if (bullets[i].y < 0) bullets.splice(i,1);
-      }
-
-      // 更新敌机
-      for (let i=enemies.length-1;i>=0;i--){
-        enemies[i].y += enemies[i].speed;
-        if (enemies[i].y > canvas.height) enemies.splice(i,1);
-      }
-    }
-
-    // 碰撞检测
-    function isCollide(a,b) {
-      return a.x < b.x+b.width && a.x+a.width>b.x && a.y<a.y+b.height && a.y+a.height>b.y;
-    }
-
-    // 绘制
-    function draw() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      drawRect(player,"cyan");
-      bullets.forEach(b=>drawRect(b,"yellow"));
-      enemies.forEach(e=>drawRect(e,"red"));
+
+      if(isMobile) updatePlayerMobile();
+      else {
+        if(keys["ArrowLeft"] && player.x>0) player.x-=player.speed;
+        if(keys["ArrowRight"] && player.x<canvas.width-player.width) player.x+=player.speed;
+        if(keys["ArrowUp"] && player.y>0) player.y-=player.speed;
+        if(keys["ArrowDown"] && player.y<canvas.height-player.height) player.y+=player.speed;
+        if(keys["Space"]){ if(!keys.shooting){ shoot(); keys.shooting=true; } } else { keys.shooting=false; }
+      }
+
+      drawPlayer();
+      drawBullets();
+      drawEnemies();
+      checkCollisions();
+
+      requestAnimationFrame(gameLoop);
     }
 
-    // 游戏循环
-    function loop() {
-      update();
-      draw();
-      requestAnimationFrame(loop);
-    }
-    loop();
+    startBtn.addEventListener("click", () => {
+      startBtn.style.display="none";
+      bgm.volume=0.5;
+      bgm.play();
+
+      // 确保玩家飞机图片加载完成再开始游戏
+      playerImg.onload = () => { enemyInterval = setInterval(spawnEnemy,1000); gameLoop(); };
+      if(playerImg.complete){ enemyInterval = setInterval(spawnEnemy,1000); gameLoop(); }
+    });
   </script>
 </body>
 </html>
