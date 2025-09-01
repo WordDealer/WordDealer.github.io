@@ -7,10 +7,11 @@
     body {
       margin: 0;
       overflow: hidden;
-      background: black;
+      background: white url("bg1.png") center/cover no-repeat; /* 默认背景 */
       text-align: center;
       color: white;
       font-family: Arial, sans-serif;
+      transition: background 0.5s ease; /* 切换时平滑过渡 */
     }
     /* 全屏粉色半透明背景 */
     #overlay {
@@ -72,6 +73,22 @@
       line-height: 1.5em;
       z-index: 2;
     }
+    /* 切换背景按钮 */
+    #changeBgBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 8px 15px;
+      font-size: 16px;
+      background: rgba(255,192,203,0.8);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 3;
+    }
+    #changeBgBtn:hover {
+      background: rgba(255,105,180,0.9);
+    }
   </style>
 </head>
 <body>
@@ -87,13 +104,16 @@
   <div id="rules">
     <h3>游戏规则</h3>
     <ul>
-      <li>方向键 ←↑↓→ 控制飞机移动</li>
-      <li>空格键 发射子弹</li>
-      <li>击中敌机 +1 分</li>
-      <li>被敌机撞到则游戏结束</li>
-      <li>尽可能多地获取分数！</li>
+      <li>方向键 ←↑↓→ 控制高木移动</li>
+      <li>空格键 发射爱心</li>
+      <li>击中西片 +1 捉弄值</li>
+      <li>被西片碰到则游戏结束</li>
+      <li>尽可能多地获取捉弄值！</li>
     </ul>
   </div>
+
+  <!-- 切换背景按钮 -->
+  <button id="changeBgBtn">切换背景</button>
 
   <!-- 背景音乐 -->
   <audio id="bgm" src="bgm.mp3" loop></audio>
@@ -192,15 +212,20 @@
       if(playerImg.complete){ enemyInterval = setInterval(spawnEnemy,1000); gameLoop(); }
     });
 
-    // 检测是否为手机端
-    let isMobile = 'ontouchstart' in window || navigator.maxTouchPoints>0;
-    if(isMobile){
-      document.getElementById("gameCanvas").style.display="none";
-      startBtn.style.display="none";
-      scoreEl.style.display="none";
-      mobileMsg.style.display="block";
-      document.getElementById("rules").style.display="none"; // 手机端隐藏规则
-    }
+
+
+    // 背景切换功能
+    const bgList = [
+      "bg1.png", // 可爱猫猫
+      "bg2.png", // 小星星
+      "bg3.png", // 爱心风格
+      "bg4.png"  // 其他图
+    ];
+    let bgIndex = 0;
+    document.getElementById("changeBgBtn").addEventListener("click", () => {
+      bgIndex = (bgIndex + 1) % bgList.length;
+      document.body.style.background = `white url("${bgList[bgIndex]}") center/cover no-repeat`;
+    });
   </script>
 </body>
 </html>
