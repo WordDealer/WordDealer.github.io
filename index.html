@@ -29,12 +29,32 @@
   <div id="score">捉弄次数: 0</div>
   <canvas id="gameCanvas" width="480" height="640"></canvas>
 
+  <!-- 背景音乐 -->
+  <audio id="bgm" src="bgm.mp3" loop></audio>
+  <!-- 子弹音效 -->
+  <audio id="shootSound" src="shoot.mp3"></audio>
+
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     const scoreEl = document.getElementById("score");
 
-    // 载入图片资源（需要放在仓库根目录）
+    // 音频对象
+    const bgm = document.getElementById("bgm");
+    const shootSound = document.getElementById("shootSound");
+
+    // 页面加载后自动播放背景音乐
+    window.addEventListener("load", () => {
+      bgm.volume = 0.5; // 音量 0~1
+      bgm.play().catch(() => {
+        // 如果浏览器阻止自动播放，点击屏幕再播放
+        document.body.addEventListener("click", () => {
+          bgm.play();
+        }, { once: true });
+      });
+    });
+
+    // 载入图片资源
     const playerImg = new Image();
     playerImg.src = "player.png";   // 玩家飞机
 
@@ -74,6 +94,10 @@
         height: 20,
         speed: 7
       });
+
+      // 播放子弹音效
+      shootSound.currentTime = 0; // 重置播放位置
+      shootSound.play();
     }
 
     function drawBullets() {
@@ -104,8 +128,8 @@
         // 玩家 vs 敌机 （圆形碰撞）
         if (
           isCircleColliding(
-            e.x + e.width / 2, e.y + e.height / 2, e.width * 0.3, // 敌机半径
-            player.x + player.width / 2, player.y + player.height / 2, player.width * 0.3 // 玩家半径
+            e.x + e.width / 2, e.y + e.height / 2, e.width * 0.3,
+            player.x + player.width / 2, player.y + player.height / 2, player.width * 0.3
           )
         ) {
           gameOver = true;
@@ -119,8 +143,8 @@
           // 子弹 vs 敌机 （圆形碰撞）
           if (
             isCircleColliding(
-              b.x + b.width / 2, b.y + b.height / 2, b.width * 0.3, // 子弹半径
-              e.x + e.width / 2, e.y + e.height / 2, e.width * 0.3  // 敌机半径
+              b.x + b.width / 2, b.y + b.height / 2, b.width * 0.3,
+              e.x + e.width / 2, e.y + e.height / 2, e.width * 0.3
             )
           ) {
             bullets.splice(bi, 1);
@@ -132,7 +156,7 @@
       });
     }
 
-    // 圆形碰撞检测函数
+    // 圆形碰撞检测
     function isCircleColliding(x1, y1, r1, x2, y2, r2) {
       const dx = x1 - x2;
       const dy = y1 - y2;
